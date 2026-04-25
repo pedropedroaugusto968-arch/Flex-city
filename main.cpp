@@ -1,74 +1,59 @@
 #include <windows.h>
+#include <d3d9.h>
 #include <iostream>
-#include <vector>
 
-// Variáveis de Configuração do Hack
+// Variáveis do Hack
 bool bAimbot = false;
-int aimbotFov = 150;
-bool bEspVida = false;
-bool bEspBox = false;
-bool bEspSkeleton = false;
-bool bBypass = true;
-bool bUnlockAll = false;
-bool bNoClip = false;
-bool bFly = false;
-
-// Lógica do Painel
+float aimbotFov = 150.0f;
+bool bEspVida = false, bEspBox = false, bEspSkeleton = false;
+bool bFly = false, bNoClip = false, bUnlockAll = false;
 bool bMinimized = false;
-bool bShowMenu = true;
 
-void RenderMenu() {
-    system("cls");
-    std::cout << "--- SPACE XIT PC | @eoo_gomes3 ---" << std::endl;
+// Configuração da "Bolinha"
+float ballX = 50, ballY = 50;
+
+void ProcessCheats() {
+    if (bFly) { /* Lógica de escrita na memória aqui */ }
+    if (bAimbot) { /* Lógica de trava de mira aqui */ }
+}
+
+// Simulação da Interface Visual
+void RenderUI() {
     if (bMinimized) {
-        std::cout << "[ O ] BOLINHA FLUTUANTE (Pressione F2 para Expandir)" << std::endl;
+        // Renderiza apenas um círculo roxo pequeno (Bolinha)
+        std::cout << "[ SPACE ]" << std::flush; 
     } else {
-        std::cout << "Pressione F2 para Minimizar" << std::endl;
-        std::cout << "---------------------------------" << std::endl;
-        std::cout << "[1] BYPASS: " << (bBypass ? "ON" : "OFF") << std::endl;
-        std::cout << "[2] AIMBOT (FOV: " << aimbotFov << "): " << (bAimbot ? "ON" : "OFF") << std::endl;
-        std::cout << "[3] ESP BOX: " << (bEspBox ? "ON" : "OFF") << std::endl;
-        std::cout << "[4] ESP VIDA: " << (bEspVida ? "ON" : "OFF") << std::endl;
-        std::cout << "[5] FLY: " << (bFly ? "ON" : "OFF") << std::endl;
-        std::cout << "[6] UNLOCK ALL: " << (bUnlockAll ? "ON" : "OFF") << std::endl;
-        std::cout << "---------------------------------" << std::endl;
-        std::cout << "Setas Esq/Dir para ajustar FOV do Aimbot" << std::endl;
+        // Renderiza o Painel Completo
+        std::cout << "\n--- SPACE XIT PREMIUM ---" << std::endl;
+        std::cout << "[1] AIMBOT FOV: " << aimbotFov << std::endl;
+        std::cout << "[2] ESP BOX: " << (bEspBox ? "ON" : "OFF") << std::endl;
+        std::cout << "[3] FLY: " << (bFly ? "ON" : "OFF") << std::endl;
+        std::cout << "[F2] MINIMIZAR PARA BOLINHA" << std::endl;
     }
 }
 
 int main() {
-    SetConsoleTitleA("SpaceXit - Flex City");
+    SetConsoleTitleA("SpaceXit PC - Flex City");
     
-    // Loop Principal
     while (true) {
-        // Tecla para Minimizar/Expandir (Simulando a Bolinha)
+        // Tecla para Minimizar (Igual você pediu)
         if (GetAsyncKeyState(VK_F2) & 1) {
             bMinimized = !bMinimized;
-            RenderMenu();
+            system("cls");
         }
 
         if (!bMinimized) {
-            // Controles do Menu
-            if (GetAsyncKeyState('1') & 1) { bBypass = !bBypass; RenderMenu(); }
-            if (GetAsyncKeyState('2') & 1) { bAimbot = !bAimbot; RenderMenu(); }
+            // Controles de Aimbot (0 a 500)
+            if (GetAsyncKeyState(VK_RIGHT) & 0x8000) if (aimbotFov < 500) aimbotFov += 1.0f;
+            if (GetAsyncKeyState(VK_LEFT) & 0x8000) if (aimbotFov > 0) aimbotFov -= 1.0f;
             
-            // Ajuste do FOV Aimbot (0 a 500)
-            if (GetAsyncKeyState(VK_RIGHT) & 0x8000) {
-                if (aimbotFov < 500) { aimbotFov += 5; RenderMenu(); }
-            }
-            if (GetAsyncKeyState(VK_LEFT) & 0x8000) {
-                if (aimbotFov > 0) { aimbotFov -= 5; RenderMenu(); }
-            }
-
-            if (GetAsyncKeyState('5') & 1) { bFly = !bFly; RenderMenu(); }
+            if (GetAsyncKeyState('1') & 1) bAimbot = !bAimbot;
+            if (GetAsyncKeyState('2') & 1) bFly = !bFly;
         }
 
-        // Simulação da lógica de Fly/NoClip
-        if (bFly) {
-            // Aqui entraria a escrita de memória: WriteProcessMemory(...)
-        }
-
-        Sleep(100);
+        RenderUI();
+        ProcessCheats();
+        Sleep(10);
     }
     return 0;
 }
