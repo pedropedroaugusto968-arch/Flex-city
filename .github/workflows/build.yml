@@ -1,24 +1,21 @@
-name: Compilar SpaceXit PC
+name: Build SpaceXit PC
 on: [push]
 
 jobs:
   build:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - name: Configurar MSVC
-        uses: ilammy/msvc-dev-cmd@v1
+      - name: Add MSBuild to PATH
+        uses: microsoft/setup-msbuild@v2
 
-      - name: Gerar Projeto e Compilar
+      - name: Compilar SpaceXit EXE
         run: |
-          mkdir build
-          cd build
-          cmake ..
-          cmake --build . --config Release
+          cl.exe /EHsc main.cpp /fe:SpaceXit_PC.exe user32.lib gdi32.lib
 
-      - name: Enviar EXE para Download
-        uses: actions/upload-artifact@v3
+      - name: Upload do Executavel
+        uses: actions/upload-artifact@v4
         with:
-          name: SpaceXit_PC_Edition
-          path: build/Release/SpaceXit_PC.exe
+          name: SpaceXit-PC-Build
+          path: SpaceXit_PC.exe
