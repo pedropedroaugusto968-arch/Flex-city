@@ -1,0 +1,21 @@
+name: Build SpaceXit PC
+on: [push]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configurar MSVC (Compilador)
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Compilar SpaceXit EXE
+        run: |
+          cl.exe /EHsc main.cpp /fe:SpaceXit_PC.exe user32.lib gdi32.lib shell32.lib
+
+      - name: Upload do Executavel
+        uses: actions/upload-artifact@v4
+        with:
+          name: SpaceXit-PC-Build
+          path: SpaceXit_PC.exe
