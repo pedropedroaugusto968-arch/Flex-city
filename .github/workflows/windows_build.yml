@@ -7,15 +7,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Configurar MSVC (Compilador)
+      - name: Configurar Compilador Windows (MSVC)
         uses: ilammy/msvc-dev-cmd@v1
 
       - name: Compilar SpaceXit EXE
         run: |
-          cl.exe /EHsc main.cpp /fe:SpaceXit_PC.exe user32.lib gdi32.lib shell32.lib
+          cl.exe /EHsc main.cpp /Fe:SpaceXit_PC.exe user32.lib gdi32.lib shell32.lib
+        # O comando /Fe: define o nome exato do arquivo de saida
 
-      - name: Upload do Executavel
+      - name: Enviar para Download
         uses: actions/upload-artifact@v4
         with:
-          name: SpaceXit-PC-Build
+          name: SpaceXit-PC-Executavel
           path: SpaceXit_PC.exe
