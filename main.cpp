@@ -1,59 +1,68 @@
 #include <windows.h>
-#include <d3d9.h>
 #include <iostream>
 
-// Variáveis do Hack
+// Configurações do Hack
 bool bAimbot = false;
-float aimbotFov = 150.0f;
+int aimbotFov = 150; // 0 a 500
 bool bEspVida = false, bEspBox = false, bEspSkeleton = false;
 bool bFly = false, bNoClip = false, bUnlockAll = false;
+bool bBypass = true;
+
+// Estado do Painel
 bool bMinimized = false;
 
-// Configuração da "Bolinha"
-float ballX = 50, ballY = 50;
-
-void ProcessCheats() {
-    if (bFly) { /* Lógica de escrita na memória aqui */ }
-    if (bAimbot) { /* Lógica de trava de mira aqui */ }
-}
-
-// Simulação da Interface Visual
-void RenderUI() {
+void RenderMenu() {
+    system("cls");
+    std::cout << "====================================" << std::endl;
+    std::cout << "   SPACE XIT PC - @eoo_gomes3       " << std::endl;
+    std::cout << "====================================" << std::endl;
+    
     if (bMinimized) {
-        // Renderiza apenas um círculo roxo pequeno (Bolinha)
-        std::cout << "[ SPACE ]" << std::flush; 
+        std::cout << "\n    [ SPACE ] <-- Bolinha Ativa" << std::endl;
+        std::cout << "\n (Pressione F2 para abrir o Painel)" << std::endl;
     } else {
-        // Renderiza o Painel Completo
-        std::cout << "\n--- SPACE XIT PREMIUM ---" << std::endl;
-        std::cout << "[1] AIMBOT FOV: " << aimbotFov << std::endl;
-        std::cout << "[2] ESP BOX: " << (bEspBox ? "ON" : "OFF") << std::endl;
-        std::cout << "[3] FLY: " << (bFly ? "ON" : "OFF") << std::endl;
-        std::cout << "[F2] MINIMIZAR PARA BOLINHA" << std::endl;
+        std::cout << " [F2] MINIMIZAR PARA BOLINHA" << std::endl;
+        std::cout << "------------------------------------" << std::endl;
+        std::cout << " [1] BYPASS: " << (bBypass ? "ON" : "OFF") << std::endl;
+        std::cout << " [2] AIMBOT FOV [" << aimbotFov << "]: " << (bAimbot ? "ON" : "OFF") << std::endl;
+        std::cout << "     (Use SETAS Esq/Dir para ajustar)" << std::endl;
+        std::cout << " [3] ESP (BOX/VIDA/SKELETON): " << (bEspBox ? "ON" : "OFF") << std::endl;
+        std::cout << " [4] FLY / NOCLIP: " << (bFly ? "ON" : "OFF") << std::endl;
+        std::cout << " [5] UNLOCK ALL: " << (bUnlockAll ? "ON" : "OFF") << std::endl;
+        std::cout << "------------------------------------" << std::endl;
+        std::cout << " [END] FECHAR HACK" << std::endl;
     }
 }
 
 int main() {
-    SetConsoleTitleA("SpaceXit PC - Flex City");
-    
+    SetConsoleTitleA("SpaceXit - Flex City Edition");
+    RenderMenu();
+
     while (true) {
-        // Tecla para Minimizar (Igual você pediu)
+        // Alternar entre Painel e Bolinha
         if (GetAsyncKeyState(VK_F2) & 1) {
             bMinimized = !bMinimized;
-            system("cls");
+            RenderMenu();
         }
 
         if (!bMinimized) {
-            // Controles de Aimbot (0 a 500)
-            if (GetAsyncKeyState(VK_RIGHT) & 0x8000) if (aimbotFov < 500) aimbotFov += 1.0f;
-            if (GetAsyncKeyState(VK_LEFT) & 0x8000) if (aimbotFov > 0) aimbotFov -= 1.0f;
-            
-            if (GetAsyncKeyState('1') & 1) bAimbot = !bAimbot;
-            if (GetAsyncKeyState('2') & 1) bFly = !bFly;
+            // Ativação das funções
+            if (GetAsyncKeyState('1') & 1) { bBypass = !bBypass; RenderMenu(); }
+            if (GetAsyncKeyState('2') & 1) { bAimbot = !bAimbot; RenderMenu(); }
+            if (GetAsyncKeyState('3') & 1) { bEspBox = !bEspBox; bEspVida = !bEspVida; RenderMenu(); }
+            if (GetAsyncKeyState('4') & 1) { bFly = !bFly; RenderMenu(); }
+
+            // Ajuste do FOV do Aimbot (0 a 500)
+            if (GetAsyncKeyState(VK_RIGHT) & 0x8000) {
+                if (aimbotFov < 500) { aimbotFov += 5; RenderMenu(); }
+            }
+            if (GetAsyncKeyState(VK_LEFT) & 0x8000) {
+                if (aimbotFov > 0) { aimbotFov -= 5; RenderMenu(); }
+            }
         }
 
-        RenderUI();
-        ProcessCheats();
-        Sleep(10);
+        if (GetAsyncKeyState(VK_END) & 1) break;
+        Sleep(100);
     }
     return 0;
 }
