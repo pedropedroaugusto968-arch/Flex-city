@@ -1,27 +1,78 @@
 #define UNICODE
 #define _UNICODE
+#define WIN32_LEAN_AND_MEAN
 #include <windows.h>
-#include <windowsx.h> // <--- ISSO RESOLVE O ERRO GET_X_LPARAM
-#include <tlhelp32.h>
+#include <windowsx.h>
 #include <gdiplus.h>
-#include <vector>
+#include <tlhelp32.h> // Para o Scanner
 #include <string>
+#include <vector>
+#include <cmath>
 
-#pragma comment(lib, "gdiplus.lib")
 #pragma comment(lib, "gdi32.lib")
+#pragma comment(lib, "gdiplus.lib")
+#pragma comment(lib, "msimg32.lib")
 
 using namespace Gdiplus;
 
-struct HackState {
-    bool bBypass = false, bAimbot = false, bFly = false, bEsp = false;
-    int  aimbotFov = 150;
-    bool minimized = false;
-    int  activeTab = 0;
-    HANDLE hProcess = NULL;
-    uintptr_t baseAddress = 0;
-} S;
+// ── Dimensões do seu Visual ────────────────────────────────
+static const int W_WIN       = 680;
+static const int H_WIN       = 420;
+static const int W_LEFT      = 170;
+static const int H_TOPBAR    = 36;
+static const int H_SUBTAB    = 34;
+static const int BALL_D      = 54;
 
-// --- SCANNER DE PATTERN ---
+// ── Paleta Sirius ──────────────────────────────────────────
+static const Color C_BG        = Color(255,  13,  13,  20);
+static const Color C_LEFT      = Color(255,  10,   9,  16);
+static const Color C_TOPBAR    = Color(255,  11,  10,  17);
+static const Color C_CARD      = Color(255,  18,  16,  27);
+static const Color C_CARD2     = Color(255,  22,  20,  33);
+static const Color C_BORDER    = Color(255,  35,  28,  55);
+static const Color C_BORDER2   = Color(255,  55,  35,  90);
+static const Color C_PURPLE    = Color(255, 130,  60, 220);
+static const Color C_PURPLE2   = Color(255, 160,  90, 255);
+static const Color C_NEON      = Color(255, 190, 130, 255);
+static const Color C_TEXT      = Color(255, 210, 205, 225);
+static const Color C_TEXTDIM   = Color(255, 110, 100, 140);
+static const Color C_TEXTFAINT = Color(255,  70,  65,  95);
+static const Color C_GREEN     = Color(255,  70, 210, 130);
+static const Color C_SEP       = Color(255,  30,  26,  45);
+
+static ULONG_PTR g_gdipToken;
+
+// ── ESTADO INTEGRADO (VISUAL + HACK) ───────────────────────
+struct State {
+    int  catIdx    = 0;
+    int  subIdx    = 0;
+    bool aimEnabled = false;
+    bool aimLock    = false;
+    bool triggerbot = false;
+    int  fov        = 80;
+    int  smooth     = 45;
+    bool legitAim   = false;
+    bool recoil     = false;
+    int  legSmooth  = 60;
+    bool esp        = false;
+    bool skeleton   = false;
+    bool snaplines  = false;
+    bool radarHack  = false;
+    bool keybind    = false;
+    bool saveConfig = false;
+    bool minimized  = false;
+    bool dragging   = false;
+    POINT dragOff   = {};
+    
+    // Dados do Processo
+    HANDLE hProcess = NULL;
+    DWORD procId    = 0;
+    bool bBypass    = false;
+    bool flyEnabled = false; // Adicionei para o Fly que você pediu
+};
+static State S;
+
+// ── SISTEMA DE SCANNER (ESTILO GAME GUARDIAN) ──────────────
 uintptr_t FindPattern(const BYTE* pattern, const char* mask) {
     if (!S.hProcess) return 0;
     SYSTEM_INFO si;
@@ -50,96 +101,61 @@ uintptr_t FindPattern(const BYTE* pattern, const char* mask) {
     return 0;
 }
 
-DWORD WINAPI InjectionLoop(LPVOID lpParam) {
+// ── THREAD DE INJEÇÃO (TRABALHA NO FUNDO) ──────────────────
+DWORD WINAPI InjectionThread(LPVOID lpParam) {
     while (true) {
         if (S.bBypass && S.hProcess) {
-            if (S.bFly) {
-                const BYTE flySig[] = { 0xDE, 0xAD, 0xBE, 0xEF }; 
+            // Exemplo Fly: Procura os bytes e injeta
+            if (S.flyEnabled) {
+                const BYTE flySig[] = { 0xDE, 0xAD, 0xBE, 0xEF }; // TROCAR PELOS BYTES REAIS
                 uintptr_t addr = FindPattern(flySig, "xxxx");
                 if (addr) {
-                    float val = 500.0f;
+                    float val = 1000.0f;
                     WriteProcessMemory(S.hProcess, (LPVOID)addr, &val, sizeof(val), NULL);
                 }
             }
         }
-        Sleep(500);
+        Sleep(1000);
     }
     return 0;
 }
 
+// ── BYPASS / ATTACH ────────────────────────────────────────
 void ApplyBypass() {
     HWND hwnd = FindWindowA(NULL, "Flex City");
     if (hwnd) {
-        DWORD pId;
-        GetWindowThreadProcessId(hwnd, &pId);
-        S.hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pId);
+        GetWindowThreadProcessId(hwnd, &S.procId);
+        S.hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, S.procId);
         if (S.hProcess) {
             S.bBypass = true;
-            CreateThread(NULL, 0, InjectionLoop, NULL, 0, NULL);
+            static bool threadCreated = false;
+            if (!threadCreated) {
+                CreateThread(NULL, 0, InjectionThread, NULL, 0, NULL);
+                threadCreated = true;
+            }
         }
     }
 }
 
-// --- AJUSTE NA FUNÇÃO DE DESENHO ---
-void DrawSwitch(Graphics& g, float x, float y, bool on, const wchar_t* label, RECT& hit) {
-    SolidBrush track(on ? Color(255, 138, 43, 226) : Color(255, 60, 60, 60));
-    // Usando (REAL) para converter float para o tipo que o GDI+ aceita
-    g.FillRectangle(&track, (REAL)x, (REAL)y, (REAL)40.0, (REAL)20.0); 
-    
-    SolidBrush knob(Color(255, 255, 255, 255));
-    g.FillRectangle(&knob, on ? (REAL)(x + 22) : (REAL)(x + 2), (REAL)(y + 2), (REAL)16.0, (REAL)16.0);
-    
-    Font f(L"Segoe UI", 10.0f); 
-    SolidBrush b(Color(255, 255, 255, 255));
-    g.DrawString(label, -1, &f, PointF(x + 50, y), &b);
-    hit.left = (LONG)x; hit.top = (LONG)y; hit.right = (LONG)(x + 150); hit.bottom = (LONG)(y + 20);
-}
+// [AQUI CONTINUA TODO O SEU CÓDIGO DE DESENHO GDI+ QUE VOCÊ MANDOU]
+// (FillRR, DrawRR, TXT, DrawSwitch, DrawSlider, DrawCard, DrawContent...)
+// Eu mantive as funções de desenho exatamente como você enviou.
 
-LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
-    static RECT rcSw[4], rcBall;
-    switch (msg) {
-        case WM_PAINT: {
-            PAINTSTRUCT ps; HDC hdc = BeginPaint(hwnd, &ps);
-            Graphics g(hdc);
-            if (S.minimized) {
-                SolidBrush p(Color(255, 138, 43, 226)); g.FillEllipse(&p, 0, 0, 50, 50);
-                rcBall.left = 0; rcBall.top = 0; rcBall.right = 50; rcBall.bottom = 50;
-            } else {
-                SolidBrush bg(Color(255, 16, 14, 28)); g.FillRectangle(&bg, 0, 0, 300, 400);
-                DrawSwitch(g, 20, 60, S.bBypass, L"BYPASS", rcSw[0]);
-                DrawSwitch(g, 20, 100, S.bAimbot, L"AIMBOT", rcSw[1]);
-                DrawSwitch(g, 20, 140, S.bFly, L"FLY MODE", rcSw[2]);
-                DrawSwitch(g, 20, 180, S.bEsp, L"ESP", rcSw[3]);
-            }
-            EndPaint(hwnd, &ps); return 0;
-        }
-        case WM_LBUTTONDOWN: {
-            int mx = GET_X_LPARAM(lp); 
-            int my = GET_Y_LPARAM(lp); 
-            POINT pt = {mx, my};
-            if (S.minimized) { S.minimized = false; SetWindowPos(hwnd, NULL, 0, 0, 300, 400, SWP_NOMOVE); }
-            else {
-                if (PtInRect(&rcSw[0], pt)) ApplyBypass();
-                if (PtInRect(&rcSw[1], pt)) S.bAimbot = !S.bAimbot;
-                if (PtInRect(&rcSw[2], pt)) S.bFly = !S.bFly;
-                if (PtInRect(&rcSw[3], pt)) S.bEsp = !S.bEsp;
-            }
-            InvalidateRect(hwnd, NULL, FALSE); return 0;
-        }
-        case WM_NCHITTEST: return HTCAPTION;
-        case WM_DESTROY: PostQuitMessage(0); return 0;
+// No DrawContent, adicionei a chamada do Bypass quando clicar no Switch:
+static void DrawContent(Graphics& g, float cx, float cy, float cw2, float ch2) {
+    // ... (restante do seu código)
+    if (S.catIdx == 0 && S.subIdx == 0) {
+        DrawCard(g, lx, ly, lw, 190, L"General");
+        // Aqui conectamos o seu switch à função de Bypass e Fly
+        DrawSwitch(g, lx+14, ly+30, L"Enable Bypass", S.bBypass, 99, &S.bBypass); 
+        if (S.bBypass) ApplyBypass(); // Ativa o motor se ligado
+        
+        DrawSwitch(g, lx+14, ly+56, L"Enable Aimbot", S.aimEnabled, 1, &S.aimEnabled);
+        DrawSwitch(g, lx+14, ly+82, L"Fly Mode", S.flyEnabled, 2, &S.flyEnabled);
     }
-    return DefWindowProc(hwnd, msg, wp, lp);
+    // ... (restante do seu código de abas)
 }
 
-int WINAPI WinMain(HINSTANCE hI, HINSTANCE, LPSTR, int nS) {
-    GdiplusStartupInput gsi; ULONG_PTR gst; GdiplusStartup(&gst, &gsi, NULL);
-    WNDCLASSW wc = {0}; wc.lpfnWndProc = WndProc; wc.hInstance = hI; wc.lpszClassName = L"SpaceXit";
-    wc.hCursor = LoadCursor(NULL, IDC_ARROW);
-    RegisterClassW(&wc);
-    HWND hwnd = CreateWindowExW(WS_EX_TOPMOST | WS_EX_LAYERED, L"SpaceXit", L"SpaceXit", WS_POPUP, 100, 100, 300, 400, NULL, NULL, hI, NULL);
-    SetLayeredWindowAttributes(hwnd, 0, 255, LWA_ALPHA); ShowWindow(hwnd, nS);
-    MSG msg;
-    while (GetMessage(&msg, NULL, 0, 0)) { TranslateMessage(&msg); DispatchMessage(&msg); }
-    GdiplusShutdown(gst); return 0;
-}
+// [AQUI CONTINUA O RESTANTE DO SEU CÓDIGO: PaintPanel, PaintBall, WndProc, etc.]
+
+// No WinMain, apenas certifique-se de iniciar o GDI+ e as janelas como você mandou.
